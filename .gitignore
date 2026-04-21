@@ -1,0 +1,6 @@
+*.pyc
+
+route.csv
+route_nominatim.csv
+route_map.html
+route_map_nominatim.html
