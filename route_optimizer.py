@@ -34,8 +34,8 @@ import sys
 import time
 from typing import Optional
 
-from openpyxl import load_workbook
-import requests
+from openpyxl import load_workbook  # type: ignore
+import requests  # type: ignore
 
 
 # ---------------------------------------------------------------------------
