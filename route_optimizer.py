@@ -18,9 +18,11 @@ Latitude and Longitude columns to the input file. Rows with both values
 present will skip the geocoder entirely on the next run.
 
 Optional flags:
-    --start-index   Row index (0-based) to use as the starting point (default: 0)
+    --start-index   Row index (0-based) to use as the starting point
+                    (default: 0)
     --no-two-opt    Skip 2-opt improvement pass (faster, lower quality)
-    --nominatim     Use Nominatim (OSM) geocoder instead of Census (for non-US addresses)
+    --nominatim     Use Nominatim (OSM) geocoder instead of Census (for non-US
+                    addresses)
     --map-output    Output HTML map file name (default: route_map.html)
 """
 
@@ -48,7 +50,9 @@ CENSUS_GEOCODE_URL = (
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
 
-def geocode_census(addresses: list[dict]) -> list[Optional[tuple[float, float]]]:
+def geocode_census(
+        addresses: list[dict]
+    ) -> list[Optional[tuple[float, float]]]:
     """
     Geocode a list of US addresses using the Census Bureau batch API.
     Returns a list of (lat, lon) tuples, or None for addresses that failed.
@@ -113,14 +117,18 @@ def geocode_census(addresses: list[dict]) -> list[Optional[tuple[float, float]]]
     return results
 
 
-def geocode_nominatim(addresses: list[dict]) -> list[Optional[tuple[float, float]]]:
+def geocode_nominatim(
+        addresses: list[dict]
+    ) -> list[Optional[tuple[float, float]]]:
     """
-    Geocode addresses using Nominatim (OpenStreetMap). Works for non-US addresses.
-    Rate-limited to 1 request/second per OSM usage policy.
+    Geocode addresses using Nominatim (OpenStreetMap). Works for non-US
+    addresses. Rate-limited to 1 request/second per OSM usage policy.
     633 addresses will take ~10-11 minutes.
     """
     print(f"  Geocoding {len(addresses)} addresses via Nominatim (OSM)...")
-    print("  Note: rate-limited to 1 req/sec — this will take several minutes.")
+    print(
+        "  Note: rate-limited to 1 req/sec — this will take several minutes."
+    )
 
     results = []
     for i, a in enumerate(addresses):
@@ -170,18 +178,25 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * \
+        math.cos(lat2) * math.sin(dlon / 2) ** 2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def build_distance_matrix(coords: list[tuple[float, float]]) -> list[list[float]]:
-    """Build a full NxN haversine distance matrix. Runs locally in < 1 second."""
+def build_distance_matrix(
+        coords: list[tuple[float, float]]
+    ) -> list[list[float]]:
+    """
+    Build a full NxN haversine distance matrix. Runs locally in < 1 second.
+    """
     n = len(coords)
     print(f"  Building {n}x{n} haversine distance matrix...")
     matrix = [[0.0] * n for _ in range(n)]
     for i in range(n):
         for j in range(i + 1, n):
-            d = haversine(coords[i][0], coords[i][1], coords[j][0], coords[j][1])
+            d = haversine(
+                coords[i][0], coords[i][1], coords[j][0], coords[j][1]
+            )
             matrix[i][j] = d
             matrix[j][i] = d
     print(f"  Distance matrix complete ({n*n:,} entries).")
@@ -192,7 +207,9 @@ def build_distance_matrix(coords: list[tuple[float, float]]) -> list[list[float]
 # 3. Route Optimization
 # ---------------------------------------------------------------------------
 
-def nearest_neighbor(dist_matrix: list[list[float]], start: int = 0) -> list[int]:
+def nearest_neighbor(
+        dist_matrix: list[list[float]], start: int = 0
+    ) -> list[int]:
     """
     Greedy nearest-neighbor heuristic. O(n²).
     Returns a list of indices in visit order.
@@ -225,8 +242,8 @@ def two_opt(route: list[int], dist_matrix: list[list[float]]) -> list[int]:
         iteration += 1
         for i in range(1, n - 1):
             for j in range(i + 1, n):
-                # Cost before: ...→route[i-1]→route[i]→...→route[j-1]→route[j]→...
-                # Cost after:  ...→route[i-1]→route[j-1]→...→route[i]→route[j]→...
+                # Cost before: ...→rte[i-1]→rte[i]→...→rte[j-1]→rte[j]→...
+                # Cost after:  ...→rte[i-1]→rte[j-1]→...→rte[i]→rte[j]→...
                 before = (dist_matrix[best_route[i - 1]][best_route[i]] +
                           dist_matrix[best_route[j - 1]][best_route[j % n]])
                 after  = (dist_matrix[best_route[i - 1]][best_route[j - 1]] +
@@ -239,8 +256,12 @@ def two_opt(route: list[int], dist_matrix: list[list[float]]) -> list[int]:
     return best_route
 
 
-def route_total_distance(route: list[int], dist_matrix: list[list[float]]) -> float:
-    return sum(dist_matrix[route[i]][route[i + 1]] for i in range(len(route) - 1))
+def route_total_distance(
+        route: list[int], dist_matrix: list[list[float]]
+    ) -> float:
+    return sum(
+        dist_matrix[route[i]][route[i + 1]] for i in range(len(route) - 1)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -248,12 +269,17 @@ def route_total_distance(route: list[int], dist_matrix: list[list[float]]) -> fl
 # ---------------------------------------------------------------------------
 
 def normalize_column_name(name: str) -> str:
-    """Normalize a column name for case-insensitive matching across CSV/XLSX headers."""
+    """
+    Normalize a column name for case-insensitive matching across CSV/XLSX
+    headers.
+    """
     return "".join(ch for ch in name.strip().lower() if ch.isalnum())
 
 
 def canonicalize_row(row: dict[str, str]) -> dict[str, str]:
-    """Map common address header variants to canonical keys expected by geocoders."""
+    """
+    Map common address header variants to canonical keys expected by geocoders.
+    """
     aliases = {
         "street": {
             "street",
@@ -295,7 +321,8 @@ def load_rows_from_csv(path: str) -> tuple[list[dict], list[str]]:
         for k, v in row.items():
             if k is None:
                 continue
-            normalized_row[normalize_column_name(k)] = str(v).strip() if v is not None else ""
+            normalized_row[normalize_column_name(k)] = \
+                str(v).strip() if v is not None else ""
         normalized.append(canonicalize_row(normalized_row))
 
     return normalized, [f.strip() for f in fieldnames]
@@ -323,7 +350,8 @@ def load_rows_from_xlsx(path: str) -> tuple[list[dict], list[str]]:
         for header, value in zip(fieldnames, values):
             if not header:
                 continue
-            normalized_row[normalize_column_name(header)] = str(value).strip() if value is not None else ""
+            normalized_row[normalize_column_name(header)] = \
+                str(value).strip() if value is not None else ""
         rows.append(canonicalize_row(normalized_row))
 
     return rows, fieldnames
@@ -337,7 +365,9 @@ def load_addresses(path: str) -> tuple[list[dict], list[str]]:
     elif ext == ".csv":
         normalized, fieldnames = load_rows_from_csv(path)
     else:
-        raise ValueError(f"Unsupported input file type: {ext}. Use .csv or .xlsx")
+        raise ValueError(
+            f"Unsupported input file type: {ext}. Use .csv or .xlsx"
+        )
 
     required = {"street", "city", "zip"}
     found = set(normalized[0].keys()) if normalized else set()
@@ -352,7 +382,9 @@ def load_addresses(path: str) -> tuple[list[dict], list[str]]:
     return normalized, fieldnames
 
 
-def extract_manual_coords(addresses: list[dict]) -> list[Optional[tuple[float, float]]]:
+def extract_manual_coords(
+        addresses: list[dict]
+    ) -> list[Optional[tuple[float, float]]]:
     """
     Read pre-supplied coordinates from address rows.
     Expects canonical keys 'latitude' and 'longitude' (populated when the input
@@ -380,7 +412,10 @@ def save_route(
     coords: list[Optional[tuple[float, float]]],
     fieldnames: list[str],
 ):
-    """Write optimized route to CSV, preserving original columns + adding lat/lon/stop_number."""
+    """
+    Write optimized route to CSV, preserving original columns + adding
+    lat/lon/stop_number.
+    """
     out_fieldnames = ["stop_number"] + fieldnames + ["latitude", "longitude"]
 
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -422,7 +457,9 @@ def save_leaflet_map(
                         addr.get("state", ""),
                         addr.get("zip", ""),
                 ]
-                address_text = ", ".join(part for part in address_parts if part)
+                address_text = ", ".join(
+                    part for part in address_parts if part
+                )
 
                 points.append({
                         "stop": stop_num,
@@ -533,7 +570,8 @@ def main():
     )
     parser.add_argument(
         "--input", "-i", default="../RuralMapping.xlsx",
-        help="Input CSV/XLSX file with columns: street, city, zip (state optional; default: ../RuralMapping.xlsx)"
+        help="Input CSV/XLSX file with columns: street, city, zip "
+        "(state optional; default: ../RuralMapping.xlsx)"
     )
     parser.add_argument(
         "--output", "-o", default="route.csv",
@@ -553,7 +591,8 @@ def main():
     )
     parser.add_argument(
         "--nominatim", action="store_true",
-        help="Use Nominatim/OSM geocoder instead of US Census (for non-US addresses)"
+        help="Use Nominatim/OSM geocoder instead of US Census "
+        "(for non-US addresses)"
     )
     args = parser.parse_args()
 
@@ -571,7 +610,10 @@ def main():
     manual_count = len(addresses) - len(needs_geocoding)
 
     if manual_count:
-        print(f"  {manual_count} address(es) have manual coordinates and will skip geocoding.")
+        print(
+            f"  {manual_count} address(es) have manual coordinates and will "
+            f"skip geocoding."
+        )
 
     if needs_geocoding:
         geocode_subset = [addresses[i] for i in needs_geocoding]
@@ -591,8 +633,8 @@ def main():
     failed_count = len(addresses) - len(valid_indices)
 
     if failed_count > 0:
-        print(f"\n  WARNING: {failed_count} addresses could not be geocoded and will be "
-              f"appended to the end of the route unchanged.")
+        print(f"\n  WARNING: {failed_count} addresses could not be geocoded "
+              f"and will be appended to the end of the route unchanged.")
 
     valid_coords = [coords[i] for i in valid_indices]
 
@@ -604,7 +646,10 @@ def main():
     if args.start_index in valid_indices:
         start = valid_indices.index(args.start_index)
     else:
-        print(f"  WARNING: Start index {args.start_index} failed geocoding. Using index 0.")
+        print(
+            f"  WARNING: Start index {args.start_index} failed geocoding. "
+            f"Using index 0."
+        )
         start = 0
 
     # --- Distance Matrix ---
